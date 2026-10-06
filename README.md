@@ -4,6 +4,14 @@ A small BPS patch for the Atari 7800 game *Touchdown Football* (1988). It
 restores field-goal scoring while preserving the game's height check and
 extra-point behavior.
 
+## Background
+
+My dad and I used to play this game all the time. It's not the best football video game ever, or even the best 8-bit football game ever, but the Atari 7800 was the only system we had, and we had a lot of fun. However, we noticed that no matter what we tried, field goals would never work. We even took the game back to Toys 'R Us and exchanged it for another copy, hoping that our copy was bad. (I knew enough about computer programming at the time to realize that was unlikely, but it was worth a shot, and I'd never say no to a trip to Toys 'R Us.)
+
+Years later I'd look up the game on the internet, and unsurprisingly I was not the only person who noticed that field goals would never score. I didn't know how to disassemble and read an Atari 7800 ROM though, so the "why?" would remain a mystery.
+
+Yesterday I decided that Codex would help me finally get to the bottom of this mystery. The rest of this is written by Codex.
+
 ## Download and apply
 
 Download [`Touchdown-Football-field-goal-fix-v1.bps`](patches/Touchdown-Football-field-goal-fix-v1.bps)
