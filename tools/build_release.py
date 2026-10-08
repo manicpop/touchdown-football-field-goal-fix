@@ -7,13 +7,13 @@ import sys
 import zlib
 
 SOURCE_SHA256 = "1d7114a709d2fa0e21ae95b00adda93595283def16dbea981924c1e0ff47df27"
-TARGET_SHA256 = "df88503356731920310dc0bd5ce09ce3072247048ac50aa34709667279813eef"
+TARGET_SHA256 = "c53b371c140030e3b82c0cce1dff590b8b575e390250241531e9c81598c1d8e9"
 HEADER_SIZE = 128
 BANK_SIZE = 0x4000
 
 
 def rom_offset(cpu_address: int, bank: int) -> int:
-    return HEADER_SIZE + bank * BANK_SIZE + cpu_address - (0x8000 if bank == 2 else 0xC000)
+    return HEADER_SIZE + bank * BANK_SIZE + cpu_address - (0xC000 if bank == 7 else 0x8000)
 
 
 def put(rom: bytearray, offset: int, expected: bytes, replacement: bytes) -> None:
@@ -105,29 +105,60 @@ def check_bps(source: bytes, patch: bytes) -> bytes:
 
 
 def patch_rom(source: bytes) -> bytes:
-    if len(source) != 128 + 8 * BANK_SIZE:
+    """Reproduce the playable candidate directly; no intermediate ROMs needed."""
+    if len(source) != HEADER_SIZE + 8 * BANK_SIZE:
         raise ValueError("expected a 128 KiB ROM with a 128-byte A78 header")
-    if source[54] != 0x02:
-        raise ValueError("unexpected source mapper header byte")
-
+    if sha256(source).hexdigest() != SOURCE_SHA256:
+        raise ValueError("source ROM SHA-256 does not match the required original")
     rom = bytearray(source)
-    # Explicitly encode the mapper ProSystem assigns to the original ROM.
-    rom[54] = 0x12
+    # Retain the cartridge header used by the PC/Wii U tested base.
+    put(rom, 54, b"\x02", b"\x08")
 
-    # Keep rendering scratch $96, and also publish the projected X into $75.
-    put(rom, rom_offset(0xD62D, 7), bytes.fromhex("A5 96 38 E9 01 85 96"),
-        bytes.fromhex("4C 0C DE EA EA EA EA"))
+    # Options text: ASCII capital O -> zero in '10 Minute Quarters'.
+    put(rom, rom_offset(0x80AB, 0), b"O", b"0")
+    # Keep the zero's outline, clearing its six diagonal slash pixels.
+    for address, expected in [(0x8930, 0xE6), (0x8A30, 0xF6),
+                              (0x8B30, 0xDE), (0x8C30, 0xCE)]:
+        put(rom, rom_offset(address, 0), bytes([expected]), b"\xC6")
 
-    # Treat the projected 160-pixel edge as the off-screen scoring threshold.
-    result = rom_offset(0x965A, 2)
-    put(rom, result, bytes.fromhex("C9 FF F0"), bytes.fromhex("C9 A0 B0"))
+    # Result state enters the bank-2 field-coordinate/deferred-banner handler.
+    put(rom, rom_offset(0x9658, 2), bytes.fromhex("A5 75 C9 FF F0 05 A5 79 F0 33 60"),
+        bytes.fromhex("4C 00 BE") + b"\xEA" * 8)
+    # Bit 0 of $211B remains the launch flag; bit 1 means scored-good pending,
+    # bit 2 means miss pending. Score at X<1 or X>=110 with height>=10, then
+    # keep state $1F and physics active until clipping ($75=FF) or flight ends.
+    # Only then run the original good/miss banner and state transition.
+    field_goal_handler = bytes.fromhex(
+        "AD 1B 21 29 06 D0 33 A5 72 C9 01 90 16 C9 6E B0"
+        "12 A5 75 C9 FF F0 1D A5 79 D0 5B AD 88 25 D0 56"
+        "4C 95 96 A5 79 C9 0A 90 0B A9 03 20 27 D0 A9 03"
+        "8D 1B 21 60 A9 05 8D 1B 21 60 A5 75 C9 FF F0 05"
+        "AD 88 25 D0 31 AD 1B 21 29 02 D0 03 4C 95 96 20"
+        "99 90 A9 00 8D 88 25 8D A4 25 20 54 D0 A9 04 20"
+        "D5 B3 A9 20 85 5F A9 28 8D 4F 25 A9 06 20 4B D0"
+        "A9 00 8D 14 21 60 60"
+    )
+    put(rom, rom_offset(0xBE00, 2), b"\xFF" * len(field_goal_handler), field_goal_handler)
 
-    # Set $75=$FF on the renderer's coarse clip path and retain its cleanup.
-    put(rom, rom_offset(0xD5E7, 7), bytes.fromhex("20 0F 60"), bytes.fromhex("4C 00 DE"))
-    put(rom, rom_offset(0xDE00, 7), b"\xFF" * 12,
-        bytes.fromhex("48 A9 FF 85 75 68 20 0F 60 4C EA D5"))
-    put(rom, rom_offset(0xDE0C, 7), b"\xFF" * 12,
-        bytes.fromhex("A5 96 38 E9 01 85 96 85 75 4C 34 D6"))
+    # Original proximity scan and threshold 10 remain. Carry chooses 25% close
+    # versus 12.5% far at the first gate; the second trajectory table is intact.
+    put(rom, rom_offset(0x935E, 2), bytes.fromhex("B0 0A 20 54 D0 AD 94 25 29 07 D0 1E"),
+        bytes.fromhex("4C 80 BE") + b"\xEA" * 9)
+    extra_point_gate = bytes.fromhex(
+        "B0 0D "           # BCS close ($BE8F), retaining proximity carry
+        "20 54 D0 "        # far: advance PRNG
+        "AD 94 25 29 07 "  # 1/8 first-gate block chance
+        "4C 97 BE EA EA "  # jump to decision; padding
+        "20 54 D0 "        # close: advance PRNG
+        "AD 94 25 29 03 "  # 1/4 first-gate block chance
+        "F0 03 4C 88 93 "  # nonzero -> original second draw/table at $9388
+        "4C 6A 93"         # zero -> original blocked/miss path at $936A
+    )
+    put(rom, rom_offset(0xBE80, 2), b"\xFF" * len(extra_point_gate), extra_point_gate)
+
+    # Preserve the unused-bank byte carried by the PC/Wii U tested base.
+    # Bank 4 is otherwise FF-filled; this is not executed kick logic.
+    put(rom, rom_offset(0xBFFF, 4), b"\xFF", b"\xEA")
     return bytes(rom)
 
 
