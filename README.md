@@ -14,14 +14,6 @@ Years later I'd look up the game on the internet, and unsurprisingly I was not t
 - **Extra points:** keeps the original ten-unit defender proximity window, but a nearby defender raises the nominal blocking chance to 25% instead of guaranteeing a block. Without a nearby defender, the original 12.5% first-gate chance remains. The separate seven-good/one-miss trajectory table is preserved.
 - **Options text:** changes `1O Minute Quarters` to `10 Minute Quarters` and removes the diagonal slash from the options/title font's zero glyph.
 
-## Background
-
-My dad and I used to play this game all the time. It's not the best football video game ever, or even the best 8-bit football game ever, but the Atari 7800 was the only system we had, and we had a lot of fun. However, we noticed that no matter what we tried, field goals would never work. We even took the game back to Toys 'R Us and exchanged it for another copy, hoping that our copy was bad. (I knew enough about computer programming at the time to realize that was unlikely, but it was worth a shot, and I'd never say no to a trip to Toys 'R Us.)
-
-Years later I'd look up the game on the internet, and unsurprisingly I was not the only person who noticed that field goals would never score. I didn't know how to disassemble and read an Atari 7800 ROM though, so the "why?" would remain a mystery.
-
-Yesterday I decided that Codex would help me finally get to the bottom of this mystery. The rest of this is written by Codex.
-
 ## Download and apply
 
 Download [Touchdown-Football-patch.bps](patches/Touchdown-Football-patch.bps) and apply it to your clean original `.a78` ROM with a BPS-compatible patcher. Or, you know, just have your AI thing do it.
