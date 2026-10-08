@@ -99,7 +99,8 @@ has two stages:
    templates. Seven have a good result and one has a miss.
 
 Before those stages, the original pre-launch routine at `$92FB` checks the
-holder's contact flag (`$2326,holder & 2`). If it is set, `$9304` calls the
+holder's contact flag (`$2326,holder & 2`). If it is set (that is, the
+holder has been touched by the defense), `$9304` calls the
 attempt no good without launching the ball or drawing either random value.
 The patch preserves this contact-based failure, so the percentages below do
 not apply to every extra-point attempt.
